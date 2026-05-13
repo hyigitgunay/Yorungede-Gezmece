@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shift Orbit — İskelet</title>
+  <style>
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a12; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+
+  <canvas id="oyun"></canvas>
+  <script>
+    (function () {
+      'use strict';
+
+      var tuval = document.getElementById('oyun');
+      var baglam = tuval.getContext('2d');
+      var muzik = new Audio('ses/muzik.wav');
+      muzik.loop = true;
+      muzik.volume = 0.35;
+
+      var sfxYorunge = new Audio('ses/yorunge.wav');
+      sfxYorunge.volume = 0.55;
+
+      var sfxYanma = new Audio('ses/yanma.wav');
+      sfxYanma.volume = 0.65;
+
+
+      var sesKilidiAcildi = false;
+
+      function sesleriKullaniciEtkilesimiyleBaslat() {
+        if (sesKilidiAcildi) {
+          return;
+        }
+        sesKilidiAcildi = true;
+        muzik.play().catch(function () {
+
+        });
+      }
+
+
+      function yorungeSesiCal() {
+        if (!sesKilidiAcildi) {
+          return;
+        }
+        sfxYorunge.currentTime = 0;
+        sfxYorunge.play().catch(function () {});
+      }
+
+      function yanmaSesiCal() {
+        if (!sesKilidiAcildi) {
+          return;
+        }
+        sfxYanma.currentTime = 0;
+        sfxYanma.play().catch(function () {});
+      }
+
+
+      var TEMEL_DONUS_HIZI = 0.018;
+      var TEMEL_DOGUM_MS = 3400;
+
+      var merkezX = 0;
+      var merkezY = 0;
+      var icYorungeYaricap = 100;
+      var disYorungeYaricap = 200;
+      var gecerliYaricap = 100;
+      var hedefYaricap = 100;
+      var aci = 0;
+      var donusHizi = TEMEL_DONUS_HIZI;
+      var yumusamaKatsayisi = 0.1;
+
+      var oyuncuBoyutu = 12;
+      var oyuncuCarpismaYaricap = (oyuncuBoyutu * Math.SQRT2) * 0.5;
+
+      var engeller = [];
+      var oyunBitti = false;
+
+      var oyunSuruyorMu = false;
+
+      var sonDogumZamani = 0;
+      var dogumAraligiMs = TEMEL_DOGUM_MS;
+      var engelYaricap = 8;
+
+      var oyunBaslangicZamani = 0;
+      var oyunSonuSkoru = 0;
+
+      var yildizlar = [];
+      var YILDIZ_ADEDI = 56;
+
+      var yenidenDeneDugmesi = { x: 0, y: 0, genislik: 220, yukseklik: 48 };
+      var baslatDugmesi = { x: 0, y: 0, genislik: 220, yukseklik: 48 };
+
+      function ekraniBoyutlandir() {
+        tuval.width = window.innerWidth;
+        tuval.height = window.innerHeight;
+        merkezX = tuval.width * 0.5;
+        merkezY = tuval.height * 0.5;
+        yildizlariYenidenOlustur();
+      }
+
+      function yildizlariYenidenOlustur() {
+        yildizlar = [];
+        var i;
+        for (i = 0; i < YILDIZ_ADEDI; i++) {
+          yildizlar.push({
+            x: Math.random() * tuval.width,
+            y: Math.random() * tuval.height,
+            vx: (Math.random() - 0.5) * 0.4,
+            vy: (Math.random() - 0.5) * 0.4,
+            yaricap: Math.random() < 0.65 ? 1 : 2
+          });
+        }
+      }
+
+      function yildizlariGuncelle() {
+        if (oyunBitti) {
+          return;
+        }
+        var i;
+        var y;
+        for (i = 0; i < yildizlar.length; i++) {
+          y = yildizlar[i];
+          y.x += y.vx;
+          y.y += y.vy;
+          if (y.x < 0) {
+            y.x += tuval.width;
+          }
+          if (y.x > tuval.width) {
+            y.x -= tuval.width;
+          }
+          if (y.y < 0) {
+            y.y += tuval.height;
+          }
+          if (y.y > tuval.height) {
+            y.y -= tuval.height;
+          }
+        }
+      }
+
+      function yildizlariCiz() {
+        baglam.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        var i;
+        var y;
+        for (i = 0; i < yildizlar.length; i++) {
+          y = yildizlar[i];
+          baglam.beginPath();
+          baglam.arc(y.x, y.y, y.yaricap, 0, Math.PI * 2);
+          baglam.fill();
+        }
+      }
+
+      function zorluguGuncelle() {
+        var gecenSn = (performance.now() - oyunBaslangicZamani) / 1000;
+        var kademe = Math.floor(gecenSn / 15);
+        donusHizi = TEMEL_DONUS_HIZI + kademe * 0.0012;
+        dogumAraligiMs = Math.max(1400, TEMEL_DOGUM_MS - kademe * 80);
+      }
+
+      function belkiYeniEngelUret() {
+        var simdi = performance.now();
+        if (simdi - sonDogumZamani < dogumAraligiMs) {
+          return;
+        }
+        sonDogumZamani = simdi;
+        var icMi = Math.random() < 0.5;
+        engeller.push({
+          yorungeYaricap: icMi ? icYorungeYaricap : disYorungeYaricap,
+          aci: Math.random() * Math.PI * 2,
+          aciHizi: -donusHizi,
+          renk: '#e53935',
+          yaricap: engelYaricap
+        });
+      }
+
+      function dairelerCarpisiyorMu(x1, y1, r1, x2, y2, r2) {
+        var mesafe = Math.hypot(x2 - x1, y2 - y1);
+        return mesafe < r1 + r2;
+      }
+
+      function carpismalariDenetle(oyuncuX, oyuncuY) {
+        var i;
+        for (i = 0; i < engeller.length; i++) {
+          var e = engeller[i];
+          var ex = merkezX + Math.cos(e.aci) * e.yorungeYaricap;
+          var ey = merkezY + Math.sin(e.aci) * e.yorungeYaricap;
+          if (dairelerCarpisiyorMu(oyuncuX, oyuncuY, oyuncuCarpismaYaricap, ex, ey, e.yaricap)) {
+            oyunBitti = true;
+            oyunSonuSkoru = Math.floor((performance.now() - oyunBaslangicZamani) / 1000);
+            yanmaSesiCal();
+            return;
+          }
+        }
+      }
+
+      function durumuGuncelle() {
+        if (oyunBitti) {
+          return;
+        }
+
+        if (!oyunSuruyorMu) {
+          gecerliYaricap += (hedefYaricap - gecerliYaricap) * yumusamaKatsayisi;
+          aci += TEMEL_DONUS_HIZI;
+          return;
+        }
+
+        zorluguGuncelle();
+
+        gecerliYaricap += (hedefYaricap - gecerliYaricap) * yumusamaKatsayisi;
+        aci += donusHizi;
+
+        var k;
+        for (k = 0; k < engeller.length; k++) {
+          engeller[k].aciHizi = -donusHizi;
+          engeller[k].aci += engeller[k].aciHizi;
+        }
+
+        belkiYeniEngelUret();
+
+        var oyuncuX = merkezX + Math.cos(aci) * gecerliYaricap;
+        var oyuncuY = merkezY + Math.sin(aci) * gecerliYaricap;
+        carpismalariDenetle(oyuncuX, oyuncuY);
+      }
+
+      function yorungeRehberleriniCiz() {
+        baglam.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+        baglam.lineWidth = 1;
+        baglam.beginPath();
+        baglam.arc(merkezX, merkezY, icYorungeYaricap, 0, Math.PI * 2);
+        baglam.stroke();
+        baglam.beginPath();
+        baglam.arc(merkezX, merkezY, disYorungeYaricap, 0, Math.PI * 2);
+        baglam.stroke();
+      }
+
+      function engelleriCiz() {
+        var i;
+        for (i = 0; i < engeller.length; i++) {
+          var e = engeller[i];
+          var ex = merkezX + Math.cos(e.aci) * e.yorungeYaricap;
+          var ey = merkezY + Math.sin(e.aci) * e.yorungeYaricap;
+          baglam.fillStyle = e.renk;
+          baglam.beginPath();
+          baglam.arc(ex, ey, e.yaricap, 0, Math.PI * 2);
+          baglam.fill();
+        }
+      }
+
+      function skoruCiz() {
+        var skorSaniye;
+        if (!oyunSuruyorMu) {
+          skorSaniye = 0;
+        } else if (oyunBitti) {
+          skorSaniye = oyunSonuSkoru;
+        } else {
+          skorSaniye = Math.floor((performance.now() - oyunBaslangicZamani) / 1000);
+        }
+        baglam.font = '600 22px system-ui, "Segoe UI", sans-serif';
+        baglam.textAlign = 'right';
+        baglam.textBaseline = 'top';
+        baglam.fillStyle = '#ffffff';
+        baglam.fillText('Skor: ' + skorSaniye, tuval.width - 20, 18);
+      }
+
+      function baslatEkraniniCiz() {
+        if (oyunSuruyorMu) {
+          return;
+        }
+        baglam.fillStyle = 'rgba(0, 0, 0, 0.45)';
+        baglam.fillRect(0, 0, tuval.width, tuval.height);
+
+        baglam.font = 'bold 40px system-ui, "Segoe UI", sans-serif';
+        baglam.textAlign = 'center';
+        baglam.textBaseline = 'middle';
+        baglam.fillStyle = '#e8e8ff';
+        baglam.fillText('Shift Orbit', merkezX, merkezY - 70);
+
+        baglam.font = '16px system-ui, "Segoe UI", sans-serif';
+        baglam.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        baglam.fillText('Space: yörünge değiştir · Başlamak için tıkla', merkezX, merkezY - 28);
+
+        var b = baslatDugmesi;
+        b.x = merkezX - b.genislik * 0.5;
+        b.y = merkezY + 10;
+
+        baglam.fillStyle = 'rgba(42, 42, 62, 0.95)';
+        baglam.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        baglam.lineWidth = 2;
+        if (baglam.roundRect) {
+          baglam.beginPath();
+          baglam.roundRect(b.x, b.y, b.genislik, b.yukseklik, 10);
+          baglam.fill();
+          baglam.stroke();
+        } else {
+          baglam.fillRect(b.x, b.y, b.genislik, b.yukseklik);
+          baglam.strokeRect(b.x, b.y, b.genislik, b.yukseklik);
+        }
+
+        baglam.font = '600 20px system-ui, "Segoe UI", sans-serif';
+        baglam.fillStyle = '#ffffff';
+        baglam.fillText('Başlat', merkezX, b.y + b.yukseklik * 0.5);
+      }
+
+      function oyunBittiEkraniniCiz() {
+        if (!oyunBitti) {
+          return;
+        }
+        baglam.fillStyle = 'rgba(0, 0, 0, 0.55)';
+        baglam.fillRect(0, 0, tuval.width, tuval.height);
+
+        baglam.font = 'bold 48px system-ui, "Segoe UI", sans-serif';
+        baglam.textAlign = 'center';
+        baglam.textBaseline = 'middle';
+        baglam.fillStyle = '#ff5252';
+        baglam.fillText('OYUN BİTTİ', merkezX, merkezY - 55);
+
+        var d = yenidenDeneDugmesi;
+        d.x = merkezX - d.genislik * 0.5;
+        d.y = merkezY + 15;
+
+        baglam.fillStyle = 'rgba(42, 42, 62, 0.95)';
+        baglam.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        baglam.lineWidth = 2;
+        if (baglam.roundRect) {
+          baglam.beginPath();
+          baglam.roundRect(d.x, d.y, d.genislik, d.yukseklik, 10);
+          baglam.fill();
+          baglam.stroke();
+        } else {
+          baglam.fillRect(d.x, d.y, d.genislik, d.yukseklik);
+          baglam.strokeRect(d.x, d.y, d.genislik, d.yukseklik);
+        }
+
+        baglam.font = '600 20px system-ui, "Segoe UI", sans-serif';
+        baglam.fillStyle = '#ffffff';
+        baglam.fillText('Yeniden Dene', merkezX, d.y + d.yukseklik * 0.5);
+      }
+
+      function oyunuSifirla() {
+        oyunBitti = false;
+        engeller = [];
+        aci = 0;
+        gecerliYaricap = icYorungeYaricap;
+        hedefYaricap = icYorungeYaricap;
+        donusHizi = TEMEL_DONUS_HIZI;
+        dogumAraligiMs = TEMEL_DOGUM_MS;
+        sonDogumZamani = performance.now();
+        oyunBaslangicZamani = performance.now();
+        oyunSonuSkoru = 0;
+        yildizlariYenidenOlustur();
+        oyunSuruyorMu = true;
+      }
+
+      function tuvalFareKonumu(olay) {
+        var sinir = tuval.getBoundingClientRect();
+        var olcekX = tuval.width / sinir.width;
+        var olcekY = tuval.height / sinir.height;
+        return {
+          x: (olay.clientX - sinir.left) * olcekX,
+          y: (olay.clientY - sinir.top) * olcekY
+        };
+      }
+
+      /**
+       * Oyun bitti ekranında “Yeniden Dene” üzerindeyken el imleci (pointer).
+       * Açılışta “Başlat” üzerinde de aynı mantık — tutarlı UX.
+       */
+      function fareImleciniGuncelle(olay) {
+        var p = tuvalFareKonumu(olay);
+        if (!oyunSuruyorMu) {
+          var b = baslatDugmesi;
+          var ub =
+            p.x >= b.x &&
+            p.x <= b.x + b.genislik &&
+            p.y >= b.y &&
+            p.y <= b.y + b.yukseklik;
+          tuval.style.cursor = ub ? 'pointer' : 'default';
+          return;
+        }
+        if (oyunBitti) {
+          var d = yenidenDeneDugmesi;
+          var ud =
+            p.x >= d.x &&
+            p.x <= d.x + d.genislik &&
+            p.y >= d.y &&
+            p.y <= d.y + d.yukseklik;
+          tuval.style.cursor = ud ? 'pointer' : 'default';
+          return;
+        }
+        tuval.style.cursor = 'default';
+      }
+
+      function animasyonKaresi() {
+        durumuGuncelle();
+        yildizlariGuncelle();
+
+        baglam.fillStyle = '#0a0a12';
+        baglam.fillRect(0, 0, tuval.width, tuval.height);
+
+        yildizlariCiz();
+        yorungeRehberleriniCiz();
+
+        baglam.fillStyle = '#3d3d55';
+        baglam.beginPath();
+        baglam.arc(merkezX, merkezY, 4, 0, Math.PI * 2);
+        baglam.fill();
+
+        if (oyunSuruyorMu) {
+          engelleriCiz();
+        }
+
+        var oyuncuX = merkezX + Math.cos(aci) * gecerliYaricap;
+        var oyuncuY = merkezY + Math.sin(aci) * gecerliYaricap;
+
+        baglam.fillStyle = '#ffffff';
+        baglam.fillRect(
+          oyuncuX - oyuncuBoyutu * 0.5,
+          oyuncuY - oyuncuBoyutu * 0.5,
+          oyuncuBoyutu,
+          oyuncuBoyutu
+        );
+
+        skoruCiz();
+        baslatEkraniniCiz();
+        oyunBittiEkraniniCiz();
+
+        requestAnimationFrame(animasyonKaresi);
+      }
+
+      window.addEventListener('keydown', function (olay) {
+        if (olay.code === 'Space' || olay.key === ' ') {
+          olay.preventDefault();
+          if (oyunSuruyorMu && !oyunBitti) {
+            hedefYaricap = disYorungeYaricap;
+            yorungeSesiCal();
+          } else if (!oyunSuruyorMu && !oyunBitti) {
+            hedefYaricap = disYorungeYaricap;
+          }
+        }
+      });
+      window.addEventListener('keyup', function (olay) {
+        if (olay.code === 'Space' || olay.key === ' ') {
+          olay.preventDefault();
+          if (oyunSuruyorMu && !oyunBitti) {
+            hedefYaricap = icYorungeYaricap;
+          } else if (!oyunSuruyorMu && !oyunBitti) {
+            hedefYaricap = icYorungeYaricap;
+          }
+        }
+      });
+
+      tuval.addEventListener('mousemove', fareImleciniGuncelle);
+
+      tuval.addEventListener('click', function (olay) {
+        var p = tuvalFareKonumu(olay);
+
+        if (!oyunSuruyorMu) {
+          var b = baslatDugmesi;
+          if (
+            p.x >= b.x &&
+            p.x <= b.x + b.genislik &&
+            p.y >= b.y &&
+            p.y <= b.y + b.yukseklik
+          ) {
+            sesleriKullaniciEtkilesimiyleBaslat();
+            oyunSuruyorMu = true;
+            oyunBaslangicZamani = performance.now();
+            sonDogumZamani = performance.now();
+          }
+          return;
+        }
+
+        if (oyunBitti) {
+          var d = yenidenDeneDugmesi;
+          if (
+            p.x >= d.x &&
+            p.x <= d.x + d.genislik &&
+            p.y >= d.y &&
+            p.y <= d.y + d.yukseklik
+          ) {
+            sesleriKullaniciEtkilesimiyleBaslat();
+            oyunuSifirla();
+          }
+        }
+      });
+
+      window.addEventListener('resize', ekraniBoyutlandir);
+      ekraniBoyutlandir();
+      requestAnimationFrame(animasyonKaresi);
+    })();
+  </script>
+</body>
+</html>
