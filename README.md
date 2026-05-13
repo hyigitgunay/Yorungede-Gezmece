@@ -71,14 +71,3 @@ Tüm sesler [Freesound](https://freesound.org) üzerinden **Creative Commons 0 (
 İndirdikten sonra dosyaları sırasıyla `yorunge.wav`, `yanma.wav`, `muzik.wav` olarak `ses/` içine koyun.
 
 ---
-
-## GitHub Pages kısa not
-
-1. Repoyu GitHub’a yükleyin.  
-2. **Settings → Pages** bölümünden `main` dalı ve kök (root) veya `docs` seçin.  
-3. Birkaç dakika sonra `https://<kullanici>.github.io/<repo>/` adresinde yayınlanır.  
-4. Bu **canlı linki** README’nin en üstündeki satıra yazın ve E-kampüs’e repo URL’sini verin.
-
----
-
-*WTP — Proje 1 (JS Oyun)*
