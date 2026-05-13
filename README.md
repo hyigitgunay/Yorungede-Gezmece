@@ -2,8 +2,8 @@
 
 2D, tek sayfa HTML5 Canvas oyunu. Merkez etrafında dönen oyuncu, **Space** ile iç / dış yörünge arasında geçer; kırmızı engellere çarpmamaya çalışır. Skor, hayatta kalınan süre (saniye) ile ölçülür.
 
-**Canlı oyun (GitHub Pages / itch.io):** _Yayınladıktan sonra bu satıra tam URL’yi yapıştırın._  
-Örnek: `https://<kullanici>.github.io/<repo-adı>/` veya itch.io oyun sayfanız.
+**Canlı oyun (GitHub Pages): 
+https://hyigitgunay.github.io/Like-Orbital-Game/
 
 ---
 
