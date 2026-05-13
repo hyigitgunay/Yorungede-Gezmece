@@ -13,7 +13,7 @@ Bu proje, yörünge ve engellerden kaçınma fikrini aşağıdaki oyundan **esin
 
 - **Referans oyun:** [Orbital v2.3.2](https://jamiemcclenaghan.itch.io/orbital) — Jamie McClenaghan (itch.io)
 
-> **Ders notu:** Ödev metninde “kaynak oyun HTML5/JS olmamalı” gibi bir kural varsa, itch.io’da bu oyun **HTML5** olarak da listelenebiliyor; tam uyum için hoca ile teyit etmeniz iyi olur. Gerekirse [itch.io past jams](https://itch.io/jams/past) kriterlerine birebir uyan başka bir girişi referans gösterebilirsiniz.
+
 
 ---
 
