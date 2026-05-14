@@ -3,8 +3,8 @@ Yorungede Gezmece #
 2D, tek sayfa HTML5 Canvas oyunu. Merkez etrafında dönen oyuncu, **Space** ile iç / dış yörünge arasında geçer; kırmızı engellere çarpmamaya çalışır. Skor, hayatta kalınan süre (saniye) ile ölçülür.
 
 **Canlı oyun (GitHub Pages): 
-https://hyigitgunay.github.io/Like-Orbital-Game/
 
+https://hyigitgunay.github.io/Yorungede-Gezmece/
 
 ---
 
